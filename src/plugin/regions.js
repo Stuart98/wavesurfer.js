@@ -316,6 +316,7 @@ class Region {
                 let updated = false;
                 let scrollDirection;
                 let wrapperRect;
+								let eventOffset;
 
                 // Scroll when the user is dragging within the threshold
                 const edgeScroll = e => {
@@ -340,7 +341,7 @@ class Region {
                     startTime = time;
 
                     // Continue dragging or resizing
-                    drag ? this.onDrag(delta) : this.onResize(delta, resize);
+                    drag ? this.onDrag(time, eventOffset) : this.onResize(delta, resize);
 
                     // Repeat
                     window.requestAnimationFrame(() => {
@@ -367,6 +368,7 @@ class Region {
                     startTime = this.wavesurfer.regions.util.getRegionSnapToGridValue(
                         this.wavesurfer.drawer.handleEvent(e, true) * duration
                     );
+										eventOffset = startTime - this.start;
 
                     // Store for scroll calculations
                     maxScroll =
@@ -437,7 +439,7 @@ class Region {
                         // Drag
                         if (this.drag && drag) {
                             updated = updated || !!delta;
-                            this.onDrag(delta);
+                            this.onDrag(time, eventOffset);
                         }
 
                         // Resize
@@ -521,16 +523,26 @@ class Region {
             })();
     }
 
-    onDrag(delta) {
-        const maxEnd = this.wavesurfer.getDuration();
-        if (this.end + delta > maxEnd || this.start + delta < 0) {
-            return;
+    onDrag(time, offset) {
+				const maxEnd = this.wavesurfer.getDuration();
+				let len = this.end - this.start;
+				let newStart = time - offset
+				let newEnd = newStart + len;
+
+        if (newEnd > maxEnd) {
+					newStart = maxEnd - len;
+					newEnd = maxEnd;
         }
 
-        this.update({
-            start: this.start + delta,
-            end: this.end + delta
-        });
+				if (newStart < 0) {
+					newStart = 0;
+					newEnd = len;
+				}
+
+				this.update({
+						start: newStart,
+						end: newEnd
+				});
     }
 
     onResize(delta, direction) {
